@@ -94,15 +94,20 @@ async def check_alarms():
                         
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         
-                        # Ginamit ang malinaw na embed para sa picture at bagong text
-                        embed = discord.Embed(
-                            title="🎀 ALARM NA! GISING NA! 🎀",
-                            description=f"{author.mention} - {message}",
-                            color=discord.Color.from_rgb(255, 105, 180)
-                        )
-                        embed.set_image(url="https://media.tenor.com/1G6K24k722AAAAAi/hello-kitty-dance.gif")
-                        
-                        await send_method(embed=embed, view=AlarmView(ctx))
+                        # Direktang gagamit ng uploaded file mula sa repo
+                        gif_path = "hello.gif"
+                        if os.path.exists(gif_path):
+                            file = discord.File(gif_path, filename="hello.gif")
+                            embed = discord.Embed(
+                                title="🎀 ALARM NA! GISING NA! 🎀",
+                                description=f"{author.mention} - {message}",
+                                color=discord.Color.from_rgb(255, 105, 180)
+                            )
+                            embed.set_image(url="attachment://hello.gif")
+                            await send_method(embed=embed, file=file, view=AlarmView(ctx))
+                        else:
+                            # Fallback kung sakaling nakalimutang i-upload ang hello.gif
+                            await send_method(f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}", view=AlarmView(ctx))
                     else:
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
