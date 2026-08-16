@@ -1,9 +1,8 @@
 import os
-import asyncio
-from datetime import datetime, time
+from datetime import datetime
 from aiohttp import web
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Button, View
 
 # Mini web server para sa Render
@@ -25,9 +24,13 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Imbakang lalagyan ng naka-set na alarm
+active_alarms = {}
+
 class AlarmView(View):
-    def __init__(self):
+    def __init__(self, ctx):
         super().__init__(timeout=None)
+        self.ctx = ctx
 
     @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
     async def stop_button(self, interaction: discord.Interaction, button: Button):
@@ -38,45 +41,64 @@ class AlarmView(View):
         else:
             await interaction.response.send_message("❌ Walang tumutunog na alarm.", ephemeral=True)
 
+@tasks.loop(seconds=5)
+async def check_alarms():
+    now = datetime.now().strftime("%I:%M %p") # Halimbawa: "03:30 PM"
+    
+    for guild_id, alarm_data in list(active_alarms.items()):
+        target_time = alarm_data["time"]
+        
+        if now == target_time:
+            ctx = alarm_data["ctx"]
+            message = alarm_data["message"]
+            
+            try:
+                if ctx.author.voice:
+                    channel = ctx.author.voice.channel
+                    vc = await channel.connect()
+                    
+                    audio_path = "alarm.mp3"
+                    if os.path.exists(audio_path):
+                        audio_source = discord.FFmpegPCMAudio(audio_path, before_options="-stream_loop -1")
+                        vc.play(audio_source)
+                        
+                        await ctx.send(
+                            content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
+                            view=AlarmView(ctx)
+                        )
+                    else:
+                        await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
+                else:
+                    await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Hindi ka nakakonekta sa voice channel!)*")
+            except Exception as e:
+                print(f"Error sa pag-trigger ng alarm: {e}")
+                
+            # Alisin na sa listahan para hindi maulit mamaya
+            del active_alarms[guild_id]
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user.name}")
+    if not check_alarms.is_running():
+        check_alarms.start()
 
 @bot.command()
-async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
+async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
     try:
-        # I-parse ang oras mula sa format na HH:MM (halimbawa: 10:30)
-        alarm_time = datetime.strptime(time_str, "%H:%M").time()
+        full_time_str = f"{time_str} {ampm.upper()}"
+        # I-validate kung tama ang format
+        datetime.strptime(full_time_str, "%I:%M %p")
         
-        await ctx.send(f"⏰ Alarm set for **{time_str}** - '{message}'")
+        active_alarms[ctx.guild.id] = {
+            "time": full_time_str,
+            "ctx": ctx,
+            "message": message
+        }
         
-        while True:
-            now = datetime.now().time()
-            # Kunin lang ang hour at minute para magtugma
-            if now.hour == alarm_time.hour and now.minute == alarm_time.minute:
-                break
-            await asyncio.sleep(10) # Magse-check kada 10 segundo
+        await ctx.send(f"⏰ Alarm set successfully for **{full_time_str}** - '{message}'")
         
-        if ctx.author.voice:
-            channel = ctx.author.voice.channel
-            vc = await channel.connect()
-            
-            audio_path = "alarm.mp3"
-            if os.path.exists(audio_path):
-                audio_source = discord.FFmpegPCMAudio(audio_path, before_options="-stream_loop -1")
-                vc.play(audio_source)
-                
-                await ctx.send(
-                    content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
-                    view=AlarmView()
-                )
-            else:
-                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
-        else:
-            await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
-            
     except ValueError:
-        await ctx.send("❌ Mali ang format ng oras! Gamitin ang 24-hour format (Halimbawa: `!alarm 10:30` o `!alarm 22:30`).")
+        await ctx.send("❌ Mali ang format! Gamitin ang ganito: `!alarm 3:30 PM` o `!alarm 10:30 AM`.")
     except Exception as e:
         await ctx.send(f"❌ Error: `{e}`")
 
