@@ -58,13 +58,12 @@ class SetAlarmView(View):
         for child in self.children:
             child.disabled = True
         
-        # Embed na may text sa loob ng litrato/banner
         embed = discord.Embed(
             title="🎀 Alarm Set Successfully!",
             description=f"Nakatakda para sa **{self.target_time}** (Philippine Time)\n*'{self.message}'*",
             color=discord.Color.from_rgb(255, 105, 180)
         )
-        embed.set_image(url="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600") # Aesthetic pink banner style
+        embed.set_image(url="https://media.tenor.com/f9G8vRzY6_AAAAAi/hello-kitty-cute.gif")
         
         await interaction.response.edit_message(content=None, embed=embed, view=self)
 
@@ -100,11 +99,11 @@ async def check_alarms():
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         
                         alarm_embed = discord.Embed(
-                            title="🚨 WAKE UP! ALARM NA! 🚨",
+                            title="🚨 HELLO KITTY WAKE UP! 🚨",
                             description=f"{author.mention} - {message}",
-                            color=discord.Color.red()
+                            color=discord.Color.from_rgb(255, 105, 180)
                         )
-                        alarm_embed.set_image(url="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600")
+                        alarm_embed.set_image(url="https://media.tenor.com/1G6K24k722AAAAAj/hello-kitty-dance.gif")
                         
                         await send_method(embed=alarm_embed, view=AlarmView(ctx))
                     else:
@@ -133,11 +132,11 @@ async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
         view = SetAlarmView(full_time_str, message)
         
         embed = discord.Embed(
-            title="🕒 Pindutin para itakda ang Alarm",
+            title="🎀 Pindutin para itakda ang Alarm",
             description=f"Oras: **{full_time_str}**",
             color=discord.Color.from_rgb(255, 105, 180)
         )
-        embed.set_image(url="https://images.unsplash.com/photo-1513151233558-d860c5398176?w=600")
+        embed.set_image(url="https://media.tenor.com/d-4sW5K0T9wAAAAC/hello-kitty.gif")
         
         await ctx.send(embed=embed, view=view)
         
