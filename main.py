@@ -3,6 +3,7 @@ import asyncio
 from aiohttp import web
 import discord
 from discord.ext import commands
+from discord.ui import Button, View
 
 # Mini web server para sa Render
 async def handle(request):
@@ -23,6 +24,19 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+class AlarmView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
+    async def stop_button(self, interaction: discord.Interaction, button: Button):
+        if interaction.guild.voice_client:
+            await interaction.guild.voice_client.disconnect()
+            await interaction.response.send_message("🛑 Napatay na ang alarm!", ephemeral=False)
+            self.stop()
+        else:
+            await interaction.response.send_message("❌ Walang tumutunog na alarm.", ephemeral=True)
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user.name}")
@@ -40,25 +54,20 @@ async def alarm(ctx, seconds: int, *, message: str = "Gising na!"):
             
             audio_path = "alarm.mp3"
             if os.path.exists(audio_path):
-                # Inayos natin ang FFmpeg options para maiwasan ang pipe error
                 audio_source = discord.FFmpegPCMAudio(audio_path, before_options="-stream_loop -1")
                 vc.play(audio_source)
-                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(I-type ang `!stop` para patayin ang tunog)*")
+                
+                await ctx.send(
+                    content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
+                    view=AlarmView()
+                )
             else:
-                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file sa repository!)*")
+                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
         else:
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
     except Exception as e:
         await ctx.send(f"❌ Error: `{e}`")
-
-@bot.command()
-async def stop(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("🛑 Napatay na ang alarm!")
-    else:
-        await ctx.send("❌ Walang tinutugtog ang bot.")
 
 async def main():
     await start_dummy_server()
