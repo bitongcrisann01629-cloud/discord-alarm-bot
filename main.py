@@ -17,18 +17,15 @@ async def on_ready():
 
 @bot.command()
 async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
-    """Example: !alarm 13:05 Gising na pre!"""
+    """Example: !alarm 13:15 Gising na pre!"""
     try:
-        # Gamitin ang Philippine Timezone (UTC+8)
         ph_tz = zoneinfo.ZoneInfo("Asia/Manila")
         now = datetime.now(ph_tz)
         
-        # I-parse ang oras mula sa user
         target_time = datetime.strptime(time_str, "%H:%M").replace(
             year=now.year, month=now.month, day=now.day, tzinfo=ph_tz
         )
         
-        # Kung lumipas na ang oras ngayong araw, ilipat sa bukas
         if target_time < now:
             target_time += timedelta(days=1)
             
@@ -37,7 +34,6 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
         await ctx.send(f"⏰ Alarm set for **{time_str}** (PH Time) - '{message}'")
         await asyncio.sleep(delay)
         
-        # Pumasok sa Voice Channel at patunugin ang alarm
         if ctx.author.voice:
             channel = ctx.author.voice.channel
             vc = await channel.connect()
@@ -55,6 +51,6 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
     except ValueError:
-        await ctx.send("❌ Maling format! Gamitin ang 24-hour time (halimbawa: `!alarm 13:05 Subok lang`)")
+        await ctx.send("❌ Maling format! Gamitin ang 24-hour time (halimbawa: `!alarm 13:15 Subok lang`)")
 
 bot.run(os.environ.get("DISCORD_TOKEN"))
