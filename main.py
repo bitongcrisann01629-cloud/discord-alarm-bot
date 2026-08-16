@@ -28,7 +28,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 active_alarms = {}
 
-# Saktong Cute Pink Hello Kitty direct image link
 HELLO_KITTY_IMAGE = "https://media.tenor.com/f9G8vRzY6_AAAAAi/hello-kitty-cute.gif"
 
 class AlarmView(View):
