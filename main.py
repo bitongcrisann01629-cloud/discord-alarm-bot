@@ -12,6 +12,7 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# UI Button para sa Stop
 class AlarmView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -53,7 +54,7 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
             vc = await channel.connect()
             
             if os.path.exists("alarm.mp3"):
-                # Nag-uulit-ulit ang sound hanggang mag-stop
+                # Nag-uulit ang audio hanggang pindutin ang button
                 vc.play(discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1"))
                 await ctx.send(
                     content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
@@ -69,6 +70,7 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
 
 @bot.command()
 async def stop(ctx):
+    """Backup text command"""
     if ctx.voice_client:
         ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
