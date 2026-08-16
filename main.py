@@ -1,5 +1,6 @@
 import os
 import asyncio
+from datetime import datetime, time
 from aiohttp import web
 import discord
 from discord.ext import commands
@@ -42,11 +43,19 @@ async def on_ready():
     print(f"Logged in as {bot.user.name}")
 
 @bot.command()
-async def alarm(ctx, seconds: int, *, message: str = "Gising na!"):
+async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
     try:
-        await ctx.send(f"⏰ Alarm set for **{seconds} seconds** from now - '{message}'")
+        # I-parse ang oras mula sa format na HH:MM (halimbawa: 10:30)
+        alarm_time = datetime.strptime(time_str, "%H:%M").time()
         
-        await asyncio.sleep(seconds)
+        await ctx.send(f"⏰ Alarm set for **{time_str}** - '{message}'")
+        
+        while True:
+            now = datetime.now().time()
+            # Kunin lang ang hour at minute para magtugma
+            if now.hour == alarm_time.hour and now.minute == alarm_time.minute:
+                break
+            await asyncio.sleep(10) # Magse-check kada 10 segundo
         
         if ctx.author.voice:
             channel = ctx.author.voice.channel
@@ -66,6 +75,8 @@ async def alarm(ctx, seconds: int, *, message: str = "Gising na!"):
         else:
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
+    except ValueError:
+        await ctx.send("❌ Mali ang format ng oras! Gamitin ang 24-hour format (Halimbawa: `!alarm 10:30` o `!alarm 22:30`).")
     except Exception as e:
         await ctx.send(f"❌ Error: `{e}`")
 
