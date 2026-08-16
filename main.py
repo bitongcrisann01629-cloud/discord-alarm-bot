@@ -4,12 +4,28 @@ from datetime import datetime, timedelta
 import zoneinfo
 import discord
 from discord.ext import commands
+from discord.ui import Button, View
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# UI View para sa Stop Button
+class AlarmView(View):
+    def __init__(self):
+        super().__init__(timeout=None) # Walang timeout para gumana kahit kailan
+
+    @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
+    async def stop_button(self, interaction: discord.Interaction, button: Button):
+        if interaction.guild.voice_client:
+            interaction.guild.voice_client.stop()
+            await interaction.guild.voice_client.disconnect()
+            await interaction.response.send_message("🛑 Napatay na ang alarm!", ephemeral=False)
+            self.stop()
+        else:
+            await interaction.response.send_message("❌ Walang tumutunog na alarm o wala ang bot sa voice channel.", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -36,21 +52,37 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
         
         if ctx.author.voice:
             channel = ctx.author.voice.channel
+            
+            if ctx.voice_client:
+                await ctx.voice_client.disconnect()
+                
             vc = await channel.connect()
             
             if os.path.exists("alarm.mp3"):
-                vc.play(discord.FFmpegPCMAudio("alarm.mp3"))
-                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message}")
-                while vc.is_playing():
-                    await asyncio.sleep(1)
+                vc.play(discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1"))
+                
+                # I-send ang message kasama ang Red Stop Button
+                view = AlarmView()
+                await ctx.send(
+                    content=f"🔔 **ALARM!** {ctx.author.mention} - {message}\nI-click ang button sa ibaba para patayin:",
+                    view=view
+                )
             else:
                 await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3)*")
-                
-            await vc.disconnect()
         else:
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
     except ValueError:
         await ctx.send("❌ Maling format! Gamitin ang 24-hour time (halimbawa: `!alarm 13:15 Subok lang`)")
+
+@bot.command()
+async def stop(ctx):
+    """Backup text command para patayin ang alarm."""
+    if ctx.voice_client:
+        ctx.voice_client.stop()
+        await ctx.voice_client.disconnect()
+        await ctx.send("🛑 Napatay na ang alarm!")
+    else:
+        await ctx.send("❌ Walang tumutunog na alarm.")
 
 bot.run(os.environ.get("DISCORD_TOKEN"))
