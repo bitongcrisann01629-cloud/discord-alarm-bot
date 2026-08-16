@@ -1,4 +1,5 @@
 import os
+import asyncio
 from datetime import datetime
 from aiohttp import web
 import discord
@@ -86,7 +87,6 @@ async def on_ready():
 async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
     try:
         full_time_str = f"{time_str} {ampm.upper()}"
-        # I-validate kung tama ang format
         datetime.strptime(full_time_str, "%I:%M %p")
         
         active_alarms[ctx.guild.id] = {
