@@ -28,8 +28,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 active_alarms = {}
 
-# Cute Hello Kitty pink hearts direct image link
-HELLO_KITTY_IMAGE = "https://i.imgur.com/8354c0Y.jpg"
+# Saktong Cute Pink Hello Kitty direct image link
+HELLO_KITTY_IMAGE = "https://media.tenor.com/f9G8vRzY6_AAAAAi/hello-kitty-cute.gif"
 
 class AlarmView(View):
     def __init__(self, ctx):
@@ -97,7 +97,7 @@ async def check_alarms():
                         
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         await send_method(
-                            content=f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}\n{HELLO_KITTY_IMAGE}",
+                            content=f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}\nhttps://media.tenor.com/1G6K24k722AAAAAj/hello-kitty-dance.gif",
                             view=AlarmView(ctx)
                         )
                     else:
