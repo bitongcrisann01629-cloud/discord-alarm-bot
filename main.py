@@ -12,10 +12,9 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# UI View para sa Stop Button
 class AlarmView(View):
     def __init__(self):
-        super().__init__(timeout=None) # Walang timeout para gumana kahit kailan
+        super().__init__(timeout=None)
 
     @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
     async def stop_button(self, interaction: discord.Interaction, button: Button):
@@ -33,7 +32,6 @@ async def on_ready():
 
 @bot.command()
 async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
-    """Example: !alarm 13:15 Gising na pre!"""
     try:
         ph_tz = zoneinfo.ZoneInfo("Asia/Manila")
         now = datetime.now(ph_tz)
@@ -53,15 +51,17 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
         if ctx.author.voice:
             channel = ctx.author.voice.channel
             
-            if ctx.voice_client:
-                await ctx.voice_client.disconnect()
-                
-            vc = await channel.connect()
+            # Subukang kumonekta nang may timeout handler
+            try:
+                if ctx.voice_client:
+                    await ctx.voice_client.disconnect()
+                vc = await channel.connect(timeout=20.0, reconnect=True)
+            except Exception as e:
+                await ctx.send(f"❌ Hindi nakakonekta sa Voice Channel: {e}")
+                return
             
             if os.path.exists("alarm.mp3"):
                 vc.play(discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1"))
-                
-                # I-send ang message kasama ang Red Stop Button
                 view = AlarmView()
                 await ctx.send(
                     content=f"🔔 **ALARM!** {ctx.author.mention} - {message}\nI-click ang button sa ibaba para patayin:",
@@ -77,7 +77,6 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
 
 @bot.command()
 async def stop(ctx):
-    """Backup text command para patayin ang alarm."""
     if ctx.voice_client:
         ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
