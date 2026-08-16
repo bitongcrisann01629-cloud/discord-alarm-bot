@@ -93,10 +93,16 @@ async def check_alarms():
                         vc.play(audio_source)
                         
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
-                        await send_method(
-                            content=f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}",
-                            view=AlarmView(ctx)
+                        
+                        # Gumamit ng Embed para sigurado at malinis ang Hello Kitty GIF
+                        embed = discord.Embed(
+                            title="🎀 ALARM NA! GISING NA! 🎀",
+                            description=f"{author.mention} - {message}",
+                            color=discord.Color.from_rgb(255, 105, 180)
                         )
+                        embed.set_image(url="https://media.tenor.com/1G6K24k722AAAAAi/hello-kitty-dance.gif")
+                        
+                        await send_method(embed=embed, view=AlarmView(ctx))
                     else:
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
