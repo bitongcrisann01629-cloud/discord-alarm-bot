@@ -28,8 +28,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 active_alarms = {}
 
-HELLO_KITTY_IMG = "https://i.imgur.com/B354c0Y.jpg"
-
 class AlarmView(View):
     def __init__(self, ctx):
         super().__init__(timeout=None)
@@ -45,11 +43,10 @@ class AlarmView(View):
             await interaction.response.send_message("❌ Walang tumutunog na alarm.", ephemeral=True)
 
 class SetAlarmView(View):
-    def __init__(self, target_time, message, ctx):
+    def __init__(self, target_time, message):
         super().__init__(timeout=60)
         self.target_time = target_time
         self.message = message
-        self.ctx = ctx
 
     @discord.ui.button(label="Kumpirmahin ✅", style=discord.ButtonStyle.primary)
     async def confirm_button(self, interaction: discord.Interaction, button: Button):
@@ -61,21 +58,16 @@ class SetAlarmView(View):
         for child in self.children:
             child.disabled = True
             
-        # I-disable muna ang buttons ng original message para hindi na ma-click ulit
-        await interaction.message.edit(view=self)
-        
-        # Magpadala ng bagong mensahe para lumabas nang malinis at may picture
-        await interaction.channel.send(
-            f"🎀 Alarm successfully set for **{self.target_time}** (Philippine Time) - '{self.message}'\n{HELLO_KITTY_IMG}"
+        await interaction.response.edit_message(
+            content=f"🎀 Alarm successfully set for **{self.target_time}** (Philippine Time) - '{self.message}'", 
+            view=self
         )
-        await interaction.response.defer()
 
     @discord.ui.button(label="Kanselahin ❌", style=discord.ButtonStyle.secondary)
     async def cancel_button(self, interaction: discord.Interaction, button: Button):
         for child in self.children:
             child.disabled = True
-        await interaction.message.edit(view=self)
-        await interaction.response.send_message("❌ Na-cancel ang pag-set ng alarm.", ephemeral=True)
+        await interaction.response.edit_message(content="❌ Na-cancel ang pag-set ng alarm.", view=self)
 
 @tasks.loop(seconds=5)
 async def check_alarms():
@@ -102,7 +94,7 @@ async def check_alarms():
                         
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         await send_method(
-                            content=f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}\n{HELLO_KITTY_IMG}",
+                            content=f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}",
                             view=AlarmView(ctx)
                         )
                     else:
@@ -128,9 +120,9 @@ async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
         full_time_str = f"{time_str} {ampm.upper()}"
         datetime.strptime(full_time_str, "%I:%M %p")
         
-        view = SetAlarmView(full_time_str, message, ctx)
+        view = SetAlarmView(full_time_str, message)
         await ctx.send(
-            f"🎀 Pindutin ang button para itakda ang alarm sa **{full_time_str}**:\n{HELLO_KITTY_IMG}", 
+            f"🎀 Pindutin ang button para itakda ang alarm sa **{full_time_str}**:", 
             view=view
         )
         
