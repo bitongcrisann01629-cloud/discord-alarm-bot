@@ -94,7 +94,7 @@ async def check_alarms():
                         
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         
-                        # Gumamit ng Embed para sigurado at malinis ang Hello Kitty GIF
+                        # Ginamit ang malinaw na embed para sa picture at bagong text
                         embed = discord.Embed(
                             title="🎀 ALARM NA! GISING NA! 🎀",
                             description=f"{author.mention} - {message}",
@@ -121,14 +121,14 @@ async def on_ready():
         check_alarms.start()
 
 @bot.command()
-async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
+async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na baby ulannko"):
     try:
         full_time_str = f"{time_str} {ampm.upper()}"
         datetime.strptime(full_time_str, "%I:%M %p")
         
         view = SetAlarmView(full_time_str, message)
         await ctx.send(
-            f"🎀 Pindutin ang button para itakda ang alarm sa **{full_time_str}**:", 
+            f"🎀 Pindutin ang button para itakda ang alarm sa **{full_time_str}** (Mensahe: *{message}*):", 
             view=view
         )
         
