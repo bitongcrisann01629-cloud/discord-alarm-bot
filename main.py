@@ -1,82 +1,62 @@
-import asyncio
-from datetime import datetime
 import os
+import asyncio
 import discord
 from discord.ext import commands
 
+# System configuration
 intents = discord.Intents.default()
 intents.message_content = True
+intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-AUDIO_PATH = os.path.join(BASE_DIR, "alarm.mp3")
-FFMPEG_PATH = os.path.join(BASE_DIR, "ffmpeg.exe")
-
-
 @bot.event
 async def on_ready():
-  print(f"Logged in successfully as {bot.user.name}")
-
+    print(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
+    print("Bot is ready and running 24/7 on Cloud!")
 
 @bot.command()
-async def alarm(ctx, time_str: str, *, label: str = "Time's up!"):
-  if not ctx.author.voice:
-    await ctx.send("❌ Sumali ka muna sa Voice Channel!")
-    return
+async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
+    """Sets an alarm. Example: !alarm 07:00 Gising na pre!"""
+    await ctx.send(f"Alarm set for **{time_str}** with message: '{message}'")
+    
+    # Simple timer logic (HH:MM format parsing)
+    try:
+        from datetime import datetime
+        now = datetime.now()
+        target_time = datetime.strptime(time_str, "%H:%M").replace(
+            year=now.year, month=now.month, day=now.day
+        )
+        
+        delay = (target_time - now).total_seconds()
+        if delay < 0:
+            delay += 86400  # Add 24 hours if time passed today
+            
+        await asyncio.sleep(delay)
+        
+        # Connect to voice channel and play audio
+        if ctx.author.voice:
+            channel = ctx.author.voice.channel
+            vc = await channel.connect()
+            
+            if os.path.exists("alarm.mp3"):
+                vc.play(discord.FFmpegPCMAudio("alarm.mp3"))
+                await ctx.send(f"⏰ **ALARM!** {ctx.author.mention} - {message}")
+                while vc.is_playing():
+                    await asyncio.sleep(1)
+            else:
+                await ctx.send(f"⏰ **ALARM!** {ctx.author.mention} - {message} *(alarm.mp3 not found)*")
+                
+            await vc.disconnect()
+        else:
+            await ctx.send(f"⏰ **ALARM!** {ctx.author.mention} - {message} *(Wala ka sa voice channel!)*")
+            
+    except ValueError:
+        await ctx.send("❌ Maling format! Gamitin ang 24-hour time format (hal. `!alarm 07:30 Lumabas ka na`)")
 
-  try:
-    # Kunin ang kasalukuyang oras at i-parse ang target time (24-hour format HH:MM)
-    now = datetime.now()
-    target_time = datetime.strptime(time_str, "%H:%M").time()
-
-    # Buuin ang full datetime object para sa target
-    target_datetime = datetime.combine(now.date(), target_time)
-
-    # Kung nakalipas na ang oras ngayong araw, i-set ito para sa bukas
-    if target_datetime <= now:
-      await ctx.send("⚠️ Nakalipas na ang oras na 'yan ngayong araw!")
-      return
-
-    # Hitain ang natitirang segundo
-    delay_seconds = (target_datetime - now).total_seconds()
-
-    await ctx.send(
-        f"⏰ Alarm set para sa **{time_str}** (mga {int(delay_seconds // 60)} minuto mula ngayon)."
-    )
-    await asyncio.sleep(delay_seconds)
-
-    # Pagpasok sa voice channel at pagpapatugtog ng alarm
-    voice_channel = ctx.author.voice.channel
-    vc = (
-        ctx.voice_client
-        if ctx.voice_client is not None
-        else await voice_channel.connect()
-    )
-
-    await ctx.send(f"🚨 {ctx.author.mention} **ALARM:** {label}")
-
-    executable = FFMPEG_PATH if os.path.exists(FFMPEG_PATH) else "ffmpeg"
-    source = discord.FFmpegPCMAudio(
-        AUDIO_PATH,
-        executable=executable,
-        options="-vn -loglevel warning -ar 48000 -ac 2",
-    )
-
-    vc.play(source)
-
-    while vc.is_playing():
-      await asyncio.sleep(1)
-
-    await vc.disconnect()
-
-  except ValueError:
-    await ctx.send(
-        "❌ Mali ang format ng oras! Gamitin ang 24-hour format (halimbawa: `!alarm 10:30 Subok lang` o `!alarm 14:15 Gising na`)."
-    )
-  except Exception as e:
-    await ctx.send(f"⚠️ Error: {e}")
-
-
-bot.run("MTUzODM2MjAwNzA1MTU2NzEzNA.GCOYHA.mDZ0CYxr8rEX_5heZyTFB0E7wpdRTdmYAE7VxI")
-
+# Reads the token safely from Render Environment Variables
+token = os.environ.get("DISCORD_TOKEN")
+if token:
+    bot.run(token)
+else:
+    print("Error: DISCORD_TOKEN Environment Variable is missing!")
