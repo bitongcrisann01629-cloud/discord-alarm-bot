@@ -3,9 +3,8 @@ import asyncio
 from aiohttp import web
 import discord
 from discord.ext import commands
-from discord.ui import Button, View
 
-# Mini web server para sa Render Web Service
+# Mini web server para sa Render
 async def handle(request):
     return web.Response(text="Bot is online!")
 
@@ -18,25 +17,10 @@ async def start_dummy_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
-# Discord Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
-intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-class AlarmView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
-    async def stop_button(self, interaction: discord.Interaction, button: Button):
-        if interaction.guild.voice_client:
-            await interaction.guild.voice_client.disconnect()
-            await interaction.response.send_message("🛑 Napatay na ang alarm!", ephemeral=False)
-            self.stop()
-        else:
-            await interaction.response.send_message("❌ Walang tumutunog na alarm.", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -47,34 +31,14 @@ async def alarm(ctx, seconds: int, *, message: str = "Gising na!"):
     try:
         await ctx.send(f"⏰ Alarm set for **{seconds} seconds** from now - '{message}'")
         
-        # Maghintay base sa binigay na seconds
+        # Maghintay base sa seconds
         await asyncio.sleep(seconds)
         
-        if ctx.author.voice:
-            channel = ctx.author.voice.channel
-            vc = await channel.connect()
-            
-            if os.path.exists("alarm.mp3"):
-                audio_source = discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1")
-                vc.play(audio_source)
-                
-                await ctx.send(
-                    content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
-                    view=AlarmView()
-                )
-            else:
-                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3)*")
-        else:
-            await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
+        # Mag-tag sa chat kapag oras na
+        await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message}")
             
     except Exception as e:
         await ctx.send(f"❌ Error: `{e}`")
-
-@bot.command()
-async def stop(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("🛑 Napatay na ang alarm!")
 
 async def main():
     await start_dummy_server()
