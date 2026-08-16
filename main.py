@@ -33,7 +33,7 @@ class AlarmView(View):
         super().__init__(timeout=None)
         self.ctx = ctx
 
-    @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.danger)
     async def stop_button(self, interaction: discord.Interaction, button: Button):
         if interaction.guild.voice_client:
             await interaction.guild.voice_client.disconnect()
@@ -42,9 +42,31 @@ class AlarmView(View):
         else:
             await interaction.response.send_message("❌ Walang tumutunog na alarm.", ephemeral=True)
 
+class SetAlarmView(View):
+    def __init__(self, target_time, message):
+        super().__init__(timeout=60)
+        self.target_time = target_time
+        self.message = message
+
+    @discord.ui.button(label="Kumpirmahin ✅", style=discord.ButtonStyle.primary)
+    async def confirm_button(self, interaction: discord.Interaction, button: Button):
+        active_alarms[interaction.guild.id] = {
+            "time": self.target_time,
+            "ctx": interaction,
+            "message": self.message
+        }
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(content=f"✨ **Alarm Confirmed!** Nakatakda na para sa **{self.target_time}** (Philippine Time) - *'{self.message}'*", view=self)
+
+    @discord.ui.button(label="Kanselahin ❌", style=discord.ButtonStyle.secondary)
+    async def cancel_button(self, interaction: discord.Interaction, button: Button):
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(content="❌ Na-cancel ang pag-set ng alarm.", view=self)
+
 @tasks.loop(seconds=5)
 async def check_alarms():
-    # Kunin ang oras dito sa Pilipinas (Asia/Manila) para magtugma sa inyo
     now = datetime.now(ZoneInfo("Asia/Manila")).strftime("%I:%M %p")
     
     for guild_id, alarm_data in list(active_alarms.items()):
@@ -55,23 +77,28 @@ async def check_alarms():
             message = alarm_data["message"]
             
             try:
-                if ctx.author.voice:
-                    channel = ctx.author.voice.channel
-                    vc = await channel.connect()
+                author = ctx.user if isinstance(ctx, discord.Interaction) else ctx.author
+                channel_voice = author.voice.channel if author.voice else None
+                
+                if channel_voice:
+                    vc = await channel_voice.connect()
                     
                     audio_path = "alarm.mp3"
                     if os.path.exists(audio_path):
                         audio_source = discord.FFmpegPCMAudio(audio_path, before_options="-stream_loop -1")
                         vc.play(audio_source)
                         
-                        await ctx.send(
-                            content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
+                        send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
+                        await send_method(
+                            content=f"🔔 **ALARM!** {author.mention} - {message}",
                             view=AlarmView(ctx)
                         )
                     else:
-                        await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
+                        send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
+                        await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
                 else:
-                    await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Hindi ka nakakonekta sa voice channel!)*")
+                    send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
+                    await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Hindi ka nakakonekta sa voice channel!)*")
             except Exception as e:
                 print(f"Error sa pag-trigger ng alarm: {e}")
                 
@@ -89,13 +116,8 @@ async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
         full_time_str = f"{time_str} {ampm.upper()}"
         datetime.strptime(full_time_str, "%I:%M %p")
         
-        active_alarms[ctx.guild.id] = {
-            "time": full_time_str,
-            "ctx": ctx,
-            "message": message
-        }
-        
-        await ctx.send(f"⏰ Alarm set successfully for **{full_time_str}** (Philippine Time) - '{message}'")
+        view = SetAlarmView(full_time_str, message)
+        await ctx.send(f"🕒 **Alarm Setup**\nPindutin ang button sa ibaba para itakda ang alarm sa **{full_time_str}**:", view=view)
         
     except ValueError:
         await ctx.send("❌ Mali ang format! Gamitin ang ganito: `!alarm 3:30 PM` o `!alarm 10:30 AM`.")
