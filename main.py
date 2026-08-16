@@ -1,6 +1,7 @@
 import os
 import asyncio
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from aiohttp import web
 import discord
 from discord.ext import commands, tasks
@@ -25,7 +26,6 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Imbakang lalagyan ng naka-set na alarm
 active_alarms = {}
 
 class AlarmView(View):
@@ -44,7 +44,8 @@ class AlarmView(View):
 
 @tasks.loop(seconds=5)
 async def check_alarms():
-    now = datetime.now().strftime("%I:%M %p") # Halimbawa: "03:30 PM"
+    # Kunin ang oras dito sa Pilipinas (Asia/Manila) para magtugma sa inyo
+    now = datetime.now(ZoneInfo("Asia/Manila")).strftime("%I:%M %p")
     
     for guild_id, alarm_data in list(active_alarms.items()):
         target_time = alarm_data["time"]
@@ -74,7 +75,6 @@ async def check_alarms():
             except Exception as e:
                 print(f"Error sa pag-trigger ng alarm: {e}")
                 
-            # Alisin na sa listahan para hindi maulit mamaya
             del active_alarms[guild_id]
 
 @bot.event
@@ -95,7 +95,7 @@ async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
             "message": message
         }
         
-        await ctx.send(f"⏰ Alarm set successfully for **{full_time_str}** - '{message}'")
+        await ctx.send(f"⏰ Alarm set successfully for **{full_time_str}** (Philippine Time) - '{message}'")
         
     except ValueError:
         await ctx.send("❌ Mali ang format! Gamitin ang ganito: `!alarm 3:30 PM` o `!alarm 10:30 AM`.")
