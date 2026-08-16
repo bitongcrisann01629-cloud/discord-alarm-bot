@@ -38,14 +38,14 @@ async def alarm(ctx, seconds: int, *, message: str = "Gising na!"):
             channel = ctx.author.voice.channel
             vc = await channel.connect()
             
-            # Ilagay ang buong path kung nasaan ang app
-audio_path = os.path.join(os.path.dirname(__file__), "alarm.mp3")
-if os.path.exists(audio_path):
-    audio_source = discord.FFmpegPCMAudio(audio_path, options="-stream_loop -1")
+            audio_path = "alarm.mp3"
+            if os.path.exists(audio_path):
+                # Inayos natin ang FFmpeg options para maiwasan ang pipe error
+                audio_source = discord.FFmpegPCMAudio(audio_path, before_options="-stream_loop -1")
                 vc.play(audio_source)
                 await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(I-type ang `!stop` para patayin ang tunog)*")
             else:
-                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
+                await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3 file sa repository!)*")
         else:
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
