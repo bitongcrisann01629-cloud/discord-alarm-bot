@@ -82,38 +82,40 @@ async def check_alarms():
             
             try:
                 author = ctx.user if isinstance(ctx, discord.Interaction) else ctx.author
-                channel_voice = author.voice.channel if author.voice else None
+                channel_voice = author.voice.channel if author and author.voice else None
+                
+                send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                 
                 if channel_voice:
-                    vc = await channel_voice.connect()
-                    
-                    audio_path = "alarm.mp3"
-                    if os.path.exists(audio_path):
-                        audio_source = discord.FFmpegPCMAudio(audio_path, before_options="-stream_loop -1")
-                        vc.play(audio_source)
-                        
-                        send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
-                        
-                        # Direktang gagamit ng uploaded file mula sa repo
-                        gif_path = "hello.gif"
-                        if os.path.exists(gif_path):
-                            file = discord.File(gif_path, filename="hello.gif")
-                            embed = discord.Embed(
-                                title="🎀 ALARM NA! GISING NA! 🎀",
-                                description=f"{author.mention} - {message}",
-                                color=discord.Color.from_rgb(255, 105, 180)
-                            )
-                            embed.set_image(url="attachment://hello.gif")
-                            await send_method(embed=embed, file=file, view=AlarmView(ctx))
-                        else:
-                            # Fallback kung sakaling nakalimutang i-upload ang hello.gif
-                            await send_method(f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}", view=AlarmView(ctx))
+                    if not ctx.guild.voice_client:
+                        vc = await channel_voice.connect()
                     else:
-                        send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
-                        await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
+                        vc = ctx.guild.voice_client
+                    
+                    if os.path.exists("alarm.mp3"):
+                        if not vc.is_playing():
+                            audio_source = discord.FFmpegPCMAudio("alarm.mp3", before_options="-stream_loop -1")
+                            vc.play(audio_source)
+                
+                # Hahanapin ang in-upload na hello.gif file nang ligtas
+                gif_filename = "hello.gif"
+                for f in os.listdir("."):
+                    if f.lower() == "hello.gif":
+                        gif_filename = f
+                        break
+                
+                if os.path.exists(gif_filename):
+                    file = discord.File(gif_filename, filename="hello.gif")
+                    embed = discord.Embed(
+                        title="🎀 ALARM NA! GISING NA! 🎀",
+                        description=f"{author.mention} - {message}",
+                        color=discord.Color.from_rgb(255, 105, 180)
+                    )
+                    embed.set_image(url="attachment://hello.gif")
+                    await send_method(embed=embed, file=file, view=AlarmView(ctx))
                 else:
-                    send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
-                    await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Hindi ka nakakonekta sa voice channel!)*")
+                    await send_method(f"🎀 **ALARM NA! GISING NA!** {author.mention} - {message}", view=AlarmView(ctx))
+                    
             except Exception as e:
                 print(f"Error sa pag-trigger ng alarm: {e}")
                 
@@ -126,8 +128,13 @@ async def on_ready():
         check_alarms.start()
 
 @bot.command()
-async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na baby ulannko"):
+async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na baby ulann ko"):
     try:
+        # Awtomatikong nilalagyan ng zero kung nakalimutan mo (halimbawa: 3:30 -> 03:30)
+        parts = time_str.split(':')
+        if len(parts) == 2 and len(parts[0]) == 1:
+            time_str = f"0{time_str}"
+            
         full_time_str = f"{time_str} {ampm.upper()}"
         datetime.strptime(full_time_str, "%I:%M %p")
         
@@ -138,7 +145,7 @@ async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na baby
         )
         
     except ValueError:
-        await ctx.send("❌ Mali ang format! Gamitin ang ganito: `!alarm 3:30 PM` o `!alarm 10:30 AM`.")
+        await ctx.send("❌ Mali ang format! Gamitin ang ganito: `!alarm 3:30 PM` o `!alarm 03:30 PM`.")
     except Exception as e:
         await ctx.send(f"❌ Error: `{e}`")
 
