@@ -2,17 +2,31 @@ import os
 import asyncio
 from datetime import datetime, timedelta
 import zoneinfo
+from aiohttp import web
 import discord
 from discord.ext import commands
 from discord.ui import Button, View
 
+# Mini web server para magkaroon ng port si Render
+async def handle(request):
+    return web.Response(text="Bot is online!")
+
+async def start_dummy_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
+# Discord Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# UI Button para sa Stop
 class AlarmView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -54,7 +68,6 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
             vc = await channel.connect()
             
             if os.path.exists("alarm.mp3"):
-                # Nag-uulit ang audio hanggang pindutin ang button
                 vc.play(discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1"))
                 await ctx.send(
                     content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
@@ -70,10 +83,16 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
 
 @bot.command()
 async def stop(ctx):
-    """Backup text command"""
     if ctx.voice_client:
         ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
         await ctx.send("🛑 Napatay na ang alarm!")
 
-bot.run(os.environ.get("DISCORD_TOKEN"))
+async def main():
+    await start_dummy_server()
+    token = os.environ.get("DISCORD_TOKEN")
+    if token:
+        await bot.start(token)
+
+if __name__ == "__main__":
+    asyncio.run(main())
