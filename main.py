@@ -1,13 +1,11 @@
 import os
 import asyncio
-from datetime import datetime, timedelta
-import zoneinfo
 from aiohttp import web
 import discord
 from discord.ext import commands
 from discord.ui import Button, View
 
-# Mini web server para magkaroon ng port si Render
+# Mini web server para sa Render Web Service
 async def handle(request):
     return web.Response(text="Bot is online!")
 
@@ -34,7 +32,6 @@ class AlarmView(View):
     @discord.ui.button(label="Stop Alarm 🛑", style=discord.ButtonStyle.red)
     async def stop_button(self, interaction: discord.Interaction, button: Button):
         if interaction.guild.voice_client:
-            interaction.guild.voice_client.stop()
             await interaction.guild.voice_client.disconnect()
             await interaction.response.send_message("🛑 Napatay na ang alarm!", ephemeral=False)
             self.stop()
@@ -46,29 +43,21 @@ async def on_ready():
     print(f"Logged in as {bot.user.name}")
 
 @bot.command()
-async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
+async def alarm(ctx, seconds: int, *, message: str = "Gising na!"):
     try:
-        ph_tz = zoneinfo.ZoneInfo("Asia/Manila")
-        now = datetime.now(ph_tz)
+        await ctx.send(f"⏰ Alarm set for **{seconds} seconds** from now - '{message}'")
         
-        target_time = datetime.strptime(time_str, "%H:%M").replace(
-            year=now.year, month=now.month, day=now.day, tzinfo=ph_tz
-        )
-        
-        if target_time < now:
-            target_time += timedelta(days=1)
-            
-        delay = (target_time - now).total_seconds()
-        
-        await ctx.send(f"⏰ Alarm set for **{time_str}** (PH Time) - '{message}'")
-        await asyncio.sleep(delay)
+        # Maghintay base sa binigay na seconds
+        await asyncio.sleep(seconds)
         
         if ctx.author.voice:
             channel = ctx.author.voice.channel
             vc = await channel.connect()
             
             if os.path.exists("alarm.mp3"):
-                vc.play(discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1"))
+                audio_source = discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1")
+                vc.play(audio_source)
+                
                 await ctx.send(
                     content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
                     view=AlarmView()
@@ -78,13 +67,12 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
         else:
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
-    except ValueError:
-        await ctx.send("❌ Maling format! Gamitin ang 24-hour time (halimbawa: `!alarm 13:30 Subok lang`)")
+    except Exception as e:
+        await ctx.send(f"❌ Error: `{e}`")
 
 @bot.command()
 async def stop(ctx):
     if ctx.voice_client:
-        ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
         await ctx.send("🛑 Napatay na ang alarm!")
 
