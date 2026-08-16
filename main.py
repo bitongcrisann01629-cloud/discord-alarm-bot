@@ -28,6 +28,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 active_alarms = {}
 
+# Hello Kitty Pink Color
+PINK_COLOR = discord.Color.from_rgb(255, 105, 180)
+
 class AlarmView(View):
     def __init__(self, ctx):
         super().__init__(timeout=None)
@@ -57,13 +60,21 @@ class SetAlarmView(View):
         }
         for child in self.children:
             child.disabled = True
-        await interaction.response.edit_message(content=f"✨ **Alarm Confirmed!** Nakatakda na para sa **{self.target_time}** (Philippine Time) - *'{self.message}'*", view=self)
+            
+        embed = discord.Embed(
+            title="🎀 Alarm Confirmed!",
+            description=f"Nakatakda na para sa **{self.target_time}** (Philippine Time)\n*'{self.message}'*",
+            color=PINK_COLOR
+        )
+        embed.set_image(url="https://media.tenor.com/d-4sW5K0T9wAAAAC/hello-kitty.gif")
+        
+        await interaction.response.edit_message(content=None, embed=embed, view=self)
 
     @discord.ui.button(label="Kanselahin ❌", style=discord.ButtonStyle.secondary)
     async def cancel_button(self, interaction: discord.Interaction, button: Button):
         for child in self.children:
             child.disabled = True
-        await interaction.response.edit_message(content="❌ Na-cancel ang pag-set ng alarm.", view=self)
+        await interaction.response.edit_message(content="❌ Na-cancel ang pag-set ng alarm.", embed=None, view=self)
 
 @tasks.loop(seconds=5)
 async def check_alarms():
@@ -89,10 +100,15 @@ async def check_alarms():
                         vc.play(audio_source)
                         
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
-                        await send_method(
-                            content=f"🔔 **ALARM!** {author.mention} - {message}",
-                            view=AlarmView(ctx)
+                        
+                        alarm_embed = discord.Embed(
+                            title="🎀 ALARM NA! HELLO KITTY TIME! 🎀",
+                            description=f"{author.mention} - {message}",
+                            color=PINK_COLOR
                         )
+                        alarm_embed.set_image(url="https://media.tenor.com/1G6K24k722AAAAAj/hello-kitty-dance.gif")
+                        
+                        await send_method(embed=alarm_embed, view=AlarmView(ctx))
                     else:
                         send_method = ctx.channel.send if isinstance(ctx, discord.Interaction) else ctx.send
                         await send_method(f"🔔 **ALARM!** {author.mention} - {message} *(Wala ang alarm.mp3 file!)*")
@@ -117,7 +133,15 @@ async def alarm(ctx, time_str: str, ampm: str, *, message: str = "Gising na!"):
         datetime.strptime(full_time_str, "%I:%M %p")
         
         view = SetAlarmView(full_time_str, message)
-        await ctx.send(f"🕒 **Alarm Setup**\nPindutin ang button sa ibaba para itakda ang alarm sa **{full_time_str}**:", view=view)
+        
+        embed = discord.Embed(
+            title="🕒 Alarm Setup",
+            description=f"Pindutin ang button sa ibaba para itakda ang alarm sa **{full_time_str}**:",
+            color=PINK_COLOR
+        )
+        embed.set_image(url="https://media.tenor.com/f9G8vRzY6_AAAAAi/hello-kitty-cute.gif")
+        
+        await ctx.send(embed=embed, view=view)
         
     except ValueError:
         await ctx.send("❌ Mali ang format! Gamitin ang ganito: `!alarm 3:30 PM` o `!alarm 10:30 AM`.")
