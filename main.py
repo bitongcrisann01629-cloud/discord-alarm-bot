@@ -24,7 +24,7 @@ class AlarmView(View):
             await interaction.response.send_message("🛑 Napatay na ang alarm!", ephemeral=False)
             self.stop()
         else:
-            await interaction.response.send_message("❌ Walang tumutunog na alarm o wala ang bot sa voice channel.", ephemeral=True)
+            await interaction.response.send_message("❌ Walang tumutunog na alarm.", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -50,22 +50,14 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
         
         if ctx.author.voice:
             channel = ctx.author.voice.channel
-            
-            # Subukang kumonekta nang may timeout handler
-            try:
-                if ctx.voice_client:
-                    await ctx.voice_client.disconnect()
-                vc = await channel.connect(timeout=20.0, reconnect=True)
-            except Exception as e:
-                await ctx.send(f"❌ Hindi nakakonekta sa Voice Channel: {e}")
-                return
+            vc = await channel.connect()
             
             if os.path.exists("alarm.mp3"):
+                # Nag-uulit-ulit ang sound hanggang mag-stop
                 vc.play(discord.FFmpegPCMAudio("alarm.mp3", options="-stream_loop -1"))
-                view = AlarmView()
                 await ctx.send(
-                    content=f"🔔 **ALARM!** {ctx.author.mention} - {message}\nI-click ang button sa ibaba para patayin:",
-                    view=view
+                    content=f"🔔 **ALARM!** {ctx.author.mention} - {message}",
+                    view=AlarmView()
                 )
             else:
                 await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Wala ang alarm.mp3)*")
@@ -73,7 +65,7 @@ async def alarm(ctx, time_str: str, *, message: str = "Gising na!"):
             await ctx.send(f"🔔 **ALARM!** {ctx.author.mention} - {message} *(Pumasok ka muna sa voice channel!)*")
             
     except ValueError:
-        await ctx.send("❌ Maling format! Gamitin ang 24-hour time (halimbawa: `!alarm 13:15 Subok lang`)")
+        await ctx.send("❌ Maling format! Gamitin ang 24-hour time (halimbawa: `!alarm 13:30 Subok lang`)")
 
 @bot.command()
 async def stop(ctx):
@@ -81,7 +73,5 @@ async def stop(ctx):
         ctx.voice_client.stop()
         await ctx.voice_client.disconnect()
         await ctx.send("🛑 Napatay na ang alarm!")
-    else:
-        await ctx.send("❌ Walang tumutunog na alarm.")
 
 bot.run(os.environ.get("DISCORD_TOKEN"))
